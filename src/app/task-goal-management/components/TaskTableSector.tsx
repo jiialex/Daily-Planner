@@ -1,44 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-
-type TaskStatus = 'pending' | 'scheduled' | 'in-progress' | 'completed' | 'missed' | 'rescheduled' | 'upcoming';
-type TaskPriority = 'critical' | 'high' | 'medium' | 'low';
-
-interface Task {
-  id: string;
-  title: string;
-  goal: string;
-  goalId: string;
-  priority: TaskPriority;
-  status: TaskStatus;
-  estimatedDuration: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  deadline: string;
-  dependency: string | null;
-  aiSuggested: boolean;
-}
-
-const tasks: Task[] = [
-  { id: 'task-001', title: 'Linked Lists — Theory & Notes', goal: 'Database Exam Prep', goalId: 'goal-001', priority: 'critical', status: 'completed', estimatedDuration: '2h', scheduledDate: '13 Oct', scheduledTime: '08:00', deadline: '17 Oct', dependency: null, aiSuggested: true },
-  { id: 'task-002', title: 'Algorithm Design Lecture Review', goal: 'Database Exam Prep', goalId: 'goal-001', priority: 'high', status: 'completed', estimatedDuration: '1h 45m', scheduledDate: '13 Oct', scheduledTime: '10:15', deadline: '17 Oct', dependency: 'task-001', aiSuggested: true },
-  { id: 'task-003', title: 'Data Structures Study Session ✦', goal: 'Database Exam Prep', goalId: 'goal-001', priority: 'critical', status: 'rescheduled', estimatedDuration: '2h', scheduledDate: '13 Oct', scheduledTime: '14:45', deadline: '17 Oct', dependency: 'task-002', aiSuggested: true },
-  { id: 'task-004', title: 'Practice Quiz Set A', goal: 'Database Exam Prep', goalId: 'goal-001', priority: 'high', status: 'rescheduled', estimatedDuration: '1h', scheduledDate: '14 Oct', scheduledTime: '07:00', deadline: '17 Oct', dependency: 'task-003', aiSuggested: true },
-  { id: 'task-005', title: 'SE Project Architecture Diagram', goal: 'SE Project Phase 2', goalId: 'goal-002', priority: 'high', status: 'in-progress', estimatedDuration: '1h 30m', scheduledDate: '13 Oct', scheduledTime: '13:00', deadline: '20 Oct', dependency: null, aiSuggested: false },
-  { id: 'task-006', title: 'Team Project Meeting Prep', goal: 'SE Project Phase 2', goalId: 'goal-002', priority: 'medium', status: 'upcoming', estimatedDuration: '30m', scheduledDate: '13 Oct', scheduledTime: '16:30', deadline: '20 Oct', dependency: 'task-005', aiSuggested: false },
-  { id: 'task-007', title: 'OS Chapter 4 — Process Management', goal: 'Operating Systems Exam', goalId: 'goal-003', priority: 'high', status: 'scheduled', estimatedDuration: '1h 30m', scheduledDate: '13 Oct', scheduledTime: '19:00', deadline: '24 Oct', dependency: null, aiSuggested: true },
-  { id: 'task-008', title: 'OS Chapter 5 — Memory Management', goal: 'Operating Systems Exam', goalId: 'goal-003', priority: 'high', status: 'pending', estimatedDuration: '2h', scheduledDate: '14 Oct', scheduledTime: '09:00', deadline: '24 Oct', dependency: 'task-007', aiSuggested: true },
-  { id: 'task-009', title: 'Sorting Algorithms — Big-O Analysis', goal: 'Algorithms Course', goalId: 'goal-004', priority: 'medium', status: 'completed', estimatedDuration: '1h', scheduledDate: '12 Oct', scheduledTime: '14:00', deadline: '28 Oct', dependency: null, aiSuggested: false },
-  { id: 'task-010', title: 'Graph Traversal Problem Set', goal: 'Algorithms Course', goalId: 'goal-004', priority: 'medium', status: 'scheduled', estimatedDuration: '1h 30m', scheduledDate: '15 Oct', scheduledTime: '10:00', deadline: '28 Oct', dependency: 'task-009', aiSuggested: false },
-  { id: 'task-011', title: 'Research Paper Outline', goal: 'Research Paper Draft', goalId: 'goal-005', priority: 'medium', status: 'missed', estimatedDuration: '45m', scheduledDate: '11 Oct', scheduledTime: '20:00', deadline: '05 Nov', dependency: null, aiSuggested: false },
-  { id: 'task-012', title: 'Literature Review Section', goal: 'Research Paper Draft', goalId: 'goal-005', priority: 'low', status: 'pending', estimatedDuration: '2h', scheduledDate: '16 Oct', scheduledTime: '18:00', deadline: '05 Nov', dependency: 'task-011', aiSuggested: false },
-];
+import type { Goal, Task, TaskPriority, TaskStatus } from '@/lib/planner-types';
 
 const statusConfig: Record<TaskStatus, { variant: 'success' | 'info' | 'warning' | 'danger' | 'neutral' | 'primary'; label: string }> = {
   completed: { variant: 'success', label: 'Completed' },
@@ -59,7 +27,7 @@ const priorityConfig: Record<TaskPriority, { color: string; label: string }> = {
 
 interface CreateTaskFormData {
   title: string;
-  goal: string;
+  goalId: string;
   priority: TaskPriority;
   estimatedDuration: string;
   deadline: string;
@@ -67,6 +35,13 @@ interface CreateTaskFormData {
   scheduledTime: string;
   dependency: string;
   notes: string;
+}
+
+async function requestApi<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
+  return data as T;
 }
 
 export default function TaskTableSection() {
@@ -79,14 +54,67 @@ export default function TaskTableSection() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalOpen, setModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [taskList, setTaskList] = useState<Task[]>(tasks);
+  const [taskList, setTaskList] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateTaskFormData>({
-    defaultValues: { title: '', goal: '', priority: 'medium', estimatedDuration: '', deadline: '', scheduledDate: '', scheduledTime: '', dependency: '', notes: '' },
+    defaultValues: { title: '', goalId: '', priority: 'medium', estimatedDuration: '', deadline: '', scheduledDate: '', scheduledTime: '', dependency: '', notes: '' },
   });
 
-  const uniqueGoals = Array.from(new Set(tasks.map((t) => t.goal)));
+  const loadRecords = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [tasksResponse, goalsResponse] = await Promise.all([
+        fetch('/api/tasks'),
+        fetch('/api/goals'),
+      ]);
+      const tasksData = await tasksResponse.json();
+      const goalsData = await goalsResponse.json();
+      if (!tasksResponse.ok) throw new Error(tasksData.error || 'Unable to load tasks.');
+      if (!goalsResponse.ok) throw new Error(goalsData.error || 'Unable to load goals.');
+      setTaskList(tasksData.tasks as Task[]);
+      setGoals(goalsData.goals as Goal[]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load planner data.';
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRecords();
+  }, [loadRecords]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('search');
+    if (query) setSearch(query);
+    if (!loading && params.get('addTask') === '1') {
+      setEditingTask(null);
+      reset({
+        title: '',
+        goalId: '',
+        priority: 'medium',
+        estimatedDuration: '',
+        deadline: '',
+        scheduledDate: '',
+        scheduledTime: '',
+        dependency: '',
+        notes: '',
+      });
+      setModalOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [loading, reset]);
+
+  const uniqueGoals = goals.map((goal) => goal.title);
 
   const filtered = useMemo(() => {
     let result = taskList;
@@ -121,50 +149,109 @@ export default function TaskTableSection() {
     else setSelectedRows(new Set(filtered.map((t) => t.id)));
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setDeletingId(id);
-    setTimeout(() => {
+    try {
+      await requestApi(`/api/tasks/${id}`, { method: 'DELETE' });
       setTaskList((prev) => prev.filter((t) => t.id !== id));
-      setDeletingId(null);
       toast.success('Task deleted successfully.');
-    }, 350);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to delete task.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     const ids = Array.from(selectedRows);
-    setTaskList((prev) => prev.filter((t) => !ids.includes(t.id)));
-    setSelectedRows(new Set());
-    toast.success(`${ids.length} tasks deleted.`);
+    try {
+      await requestApi('/api/tasks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      setTaskList((prev) => prev.filter((t) => !ids.includes(t.id)));
+      setSelectedRows(new Set());
+      toast.success(`${ids.length} tasks deleted.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to delete tasks.');
+    }
   };
 
-  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    setTaskList((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-    setStatusDropdownId(null);
-    toast.success('Task status updated.');
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    try {
+      const { task } = await requestApi<{ task: Task }>(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setTaskList((prev) => prev.map((item) => item.id === task.id ? task : item));
+      setStatusDropdownId(null);
+      toast.success('Task status updated.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update task status.');
+    }
   };
 
-  const onCreateTask = (data: CreateTaskFormData) => {
-    // Backend integration: POST /api/tasks with task data
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title: data.title,
-      goal: data.goal || 'Uncategorized',
-      goalId: 'goal-misc',
-      priority: data.priority,
-      status: 'pending',
-      estimatedDuration: data.estimatedDuration,
-      scheduledDate: data.scheduledDate,
-      scheduledTime: data.scheduledTime,
-      deadline: data.deadline,
+  const onCreateTask = async (data: CreateTaskFormData) => {
+    const body = {
+      ...data,
       dependency: data.dependency || null,
-      aiSuggested: false,
     };
-    setTaskList((prev) => [newTask, ...prev]);
-    reset();
-    setModalOpen(false);
-    toast.success('Task created — it will appear in your next scheduled plan.');
+    try {
+      if (editingTask) {
+        const { task } = await requestApi<{ task: Task }>(`/api/tasks/${editingTask.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        setTaskList((prev) => prev.map((item) => item.id === task.id ? task : item));
+        toast.success('Task updated.');
+      } else {
+        const { task } = await requestApi<{ task: Task }>('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        setTaskList((prev) => [task, ...prev]);
+        setGoals((prev) => prev.map((goal) => goal.id === task.goalId
+          ? { ...goal, totalTasks: goal.totalTasks + 1 }
+          : goal));
+        toast.success('Task created.');
+      }
+      reset();
+      setEditingTask(null);
+      setModalOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save task.');
+    }
+  };
+
+  const openTaskForm = (task?: Task) => {
+    const selected = task ?? null;
+    setEditingTask(selected);
+    reset(selected ? {
+      title: selected.title,
+      goalId: selected.goalId,
+      priority: selected.priority,
+      estimatedDuration: selected.estimatedDuration,
+      deadline: selected.deadline,
+      scheduledDate: selected.scheduledDate,
+      scheduledTime: selected.scheduledTime,
+      dependency: selected.dependency ?? '',
+      notes: selected.notes,
+    } : {
+      title: '',
+      goalId: '',
+      priority: 'medium',
+      estimatedDuration: '',
+      deadline: '',
+      scheduledDate: '',
+      scheduledTime: '',
+      dependency: '',
+      notes: '',
+    });
+    setModalOpen(true);
   };
 
   const SortIcon = ({ col }: { col: keyof Task }) => (
@@ -244,7 +331,7 @@ export default function TaskTableSection() {
 
               {/* Create task */}
               <button
-                onClick={() => setModalOpen(true)}
+                onClick={() => openTaskForm()}
                 className="btn-primary h-9 text-sm flex items-center gap-1.5"
               >
                 <Icon name="PlusIcon" size={15} />
@@ -311,7 +398,16 @@ export default function TaskTableSection() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={10} className="px-4 py-16 text-center text-sm text-muted-foreground">Loading tasks…</td></tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-16 text-center">
+                    <p className="text-sm text-danger">{loadError}</p>
+                    <button onClick={() => void loadRecords()} className="btn-secondary mt-3 text-sm">Try again</button>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
@@ -445,6 +541,7 @@ export default function TaskTableSection() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                           <button
+                            onClick={() => openTaskForm(task)}
                             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
                             title="Edit task"
                             aria-label={`Edit ${task.title}`}
@@ -511,14 +608,26 @@ export default function TaskTableSection() {
             <div className="w-px h-5 bg-background/20" />
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setTaskList((prev) =>
-                    prev.map((t) =>
-                      selectedRows.has(t.id) ? { ...t, status: 'completed' } : t
-                    )
-                  );
-                  toast.success(`${selectedRows.size} tasks marked as completed.`);
-                  setSelectedRows(new Set());
+                onClick={async () => {
+                  const ids = Array.from(selectedRows);
+                  try {
+                    await requestApi('/api/tasks', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ids, status: 'completed' }),
+                    });
+                    setTaskList((prev) => prev.map((task) =>
+                      selectedRows.has(task.id) ? { ...task, status: 'completed' } : task
+                    ));
+                    setGoals((prev) => prev.map((goal) => {
+                      const changes = taskList.filter((task) => selectedRows.has(task.id) && task.goalId === goal.id && task.status !== 'completed').length;
+                      return { ...goal, completedTasks: goal.completedTasks + changes };
+                    }));
+                    toast.success(`${selectedRows.size} tasks marked as completed.`);
+                    setSelectedRows(new Set());
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : 'Unable to update tasks.');
+                  }
                 }}
                 className="flex items-center gap-1.5 bg-success/20 text-success rounded-xl px-3 py-1.5 text-xs font-semibold hover:bg-success/30 transition-all"
               >
@@ -546,15 +655,15 @@ export default function TaskTableSection() {
       {/* Create Task Modal */}
       <Modal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); reset(); }}
-        title="Create New Task"
+        onClose={() => { setModalOpen(false); setEditingTask(null); reset(); }}
+        title={editingTask ? 'Edit Task' : 'Create New Task'}
         subtitle="Add a task to your schedule — the AI will find the best time slot"
         size="lg"
         footer={
           <>
             <button
               type="button"
-              onClick={() => { setModalOpen(false); reset(); }}
+              onClick={() => { setModalOpen(false); setEditingTask(null); reset(); }}
               className="btn-ghost"
             >
               Cancel
@@ -565,7 +674,7 @@ export default function TaskTableSection() {
               className="btn-primary flex items-center gap-2"
             >
               <Icon name="PlusIcon" size={15} />
-              Create Task
+              {editingTask ? 'Save Changes' : 'Create Task'}
             </button>
           </>
         }
@@ -589,14 +698,12 @@ export default function TaskTableSection() {
             <div>
               <label className="label" htmlFor="task-goal">Goal</label>
               <p className="helper-text -mt-1 mb-1.5">Which goal does this task belong to?</p>
-              <select id="task-goal" className="input-field" {...register('goal', { required: 'Please select a goal' })}>
-                <option value="">Select a goal…</option>
-                {uniqueGoals.map((g) => (
-                  <option key={`modal-goal-${g}`} value={g}>{g}</option>
+              <select id="task-goal" className="input-field" {...register('goalId')}>
+                <option value="">No goal</option>
+                {goals.map((goal) => (
+                  <option key={`modal-goal-${goal.id}`} value={goal.id}>{goal.title}</option>
                 ))}
-                <option value="new">+ Create new goal</option>
               </select>
-              {errors.goal && <p className="error-text">{errors.goal.message}</p>}
             </div>
 
             {/* Priority */}

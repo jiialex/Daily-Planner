@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { MouseEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
+import { toast } from 'sonner';
 
 interface NavItem {
   key: string;
@@ -16,23 +18,57 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { key: 'nav-dashboard', label: 'Schedule Dashboard', icon: 'CalendarDaysIcon', href: '/', section: 'Planning' },
-  { key: 'nav-tasks', label: 'Tasks & Goals', icon: 'ClipboardDocumentListIcon', href: '/task-goal-management', badge: 3, section: 'Planning' },
-  { key: 'nav-ai-planner', label: 'AI Planner', icon: 'SparklesIcon', href: '/schedule-dashboard', section: 'Planning' },
-  { key: 'nav-reports', label: 'Productivity Reports', icon: 'ChartBarIcon', href: '/schedule-dashboard', section: 'Insights' },
-  { key: 'nav-reminders', label: 'Reminders', icon: 'BellAlertIcon', href: '/schedule-dashboard', badge: 2, section: 'Insights' },
-  { key: 'nav-history', label: 'Reschedule History', icon: 'ArrowPathIcon', href: '/schedule-dashboard', section: 'Insights' },
-  { key: 'nav-settings', label: 'Preferences', icon: 'Cog6ToothIcon', href: '/schedule-dashboard', section: 'Account' },
-  { key: 'nav-profile', label: 'My Profile', icon: 'UserCircleIcon', href: '/schedule-dashboard', section: 'Account' },
+  { key: 'nav-tasks', label: 'Tasks & Goals', icon: 'ClipboardDocumentListIcon', href: '/task-goal-management', section: 'Planning' },
+  { key: 'nav-ai-planner', label: 'AI Planner', icon: 'SparklesIcon', href: '/?generate=1#planner', section: 'Planning' },
+  { key: 'nav-reports', label: 'Productivity Reports', icon: 'ChartBarIcon', href: '/#reports', section: 'Insights' },
+  { key: 'nav-reminders', label: 'Upcoming Deadlines', icon: 'BellAlertIcon', href: '/#deadlines', section: 'Insights' },
+  { key: 'nav-history', label: 'Schedule', icon: 'ArrowPathIcon', href: '/#today-schedule', section: 'Insights' },
 ];
 
-const sections = ['Planning', 'Insights', 'Account'];
+const sections = ['Planning', 'Insights'];
 
 interface SidebarProps {
   currentPath?: string;
 }
 
 export default function Sidebar({ currentPath = '/' }: SidebarProps) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/auth/me', { cache: 'no-store' })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Unable to load account details.');
+        if (active) setUser({ name: result.user.name, email: result.user.email });
+      })
+      .catch((error: unknown) => {
+        if (active) toast.error(error instanceof Error ? error.message : 'Unable to load account details.');
+      });
+    return () => { active = false; };
+  }, []);
+
+  const signOut = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Unable to sign out.');
+      router.replace('/sign-up-login-screen');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to sign out.');
+    }
+  };
+
+  const openPlanner = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (currentPath !== '/') return;
+    event.preventDefault();
+    router.push('/#planner');
+    window.setTimeout(() => {
+      document.getElementById('planner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.dispatchEvent(new Event('planwise:generate-plan'));
+    }, 100);
+  };
 
   return (
     <aside
@@ -60,11 +96,13 @@ export default function Sidebar({ currentPath = '/' }: SidebarProps) {
                 <p className="section-header px-3 mb-2">{section}</p>
               )}
               {items.map((item) => {
-                const isActive = currentPath === item.href;
+                const itemPath = item.href.split('#')[0] || '/';
+                const isActive = currentPath === itemPath && (itemPath !== '/' || item.href === '/');
                 return (
                   <Link
                     key={item.key}
                     href={item.href}
+                    onClick={item.key === 'nav-ai-planner' ? openPlanner : undefined}
                     title={collapsed ? item.label : undefined}
                     className={`nav-item mb-0.5 relative ${isActive ? 'nav-item-active' : ''} ${collapsed ? 'justify-center px-0 py-2.5' : ''}`}
                   >
@@ -99,14 +137,18 @@ export default function Sidebar({ currentPath = '/' }: SidebarProps) {
         {!collapsed && (
           <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
             <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              DP
+              {user?.name?.slice(0, 2).toUpperCase() ?? '…'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">Jii Alex</p>
-              <p className="text-xs text-muted-foreground truncate">Student · Free Plan</p>
+              <p className="text-sm font-semibold text-foreground truncate">{user?.name ?? 'Loading account…'}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email ?? ''}</p>
             </div>
           </div>
         )}
+        <button onClick={() => void signOut()} className={`nav-item w-full mb-1 ${collapsed ? 'justify-center px-0' : ''}`}>
+          <Icon name="ArrowRightStartOnRectangleIcon" size={16} className="text-muted-foreground" />
+          {!collapsed && <span className="text-xs">Sign out</span>}
+        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={`nav-item w-full ${collapsed ? 'justify-center px-0' : ''}`}

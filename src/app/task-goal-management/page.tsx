@@ -1,12 +1,7 @@
 import React from 'react';
 import AppLayout from '@/components/AppLayout';
 import GoalsPanel from './components/GoalsPanel';
-
-const TaskTablePlaceholder = () => (
-  <div className="rounded-lg border border-dashed border-muted bg-card p-4 text-sm text-muted-foreground">
-    Task table coming soon
-  </div>
-);
+import TaskTableSection from './components/TaskTableSector';
 
 export default function TaskGoalManagementPage() {
   return (
@@ -15,14 +10,6 @@ export default function TaskGoalManagementPage() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Tasks & Goals</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage your goals, tasks, priorities, and deadlines</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-secondary flex items-center gap-1.5 h-9 text-sm">
-            <span>+ New Goal</span>
-          </button>
-          <button className="btn-primary flex items-center gap-1.5 h-9 text-sm">
-            <span>+ Add Task</span>
-          </button>
         </div>
       </div>
 
@@ -34,7 +21,7 @@ export default function TaskGoalManagementPage() {
 
         {/* Task table */}
         <div className="lg:col-span-3 xl:col-span-3 2xl:col-span-3">
-          <TaskTablePlaceholder />
+          <TaskTableSection />
         </div>
       </div>
     </AppLayout>

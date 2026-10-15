@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { useForm } from 'react-hook-form';
 import Icon from '@/components/ui/AppIcon';
@@ -34,12 +35,8 @@ const planningModes: { key: PlanningMode; label: string; icon: string; desc: str
   { key: 'personal', label: 'Personal', icon: 'HeartIcon', desc: 'Habits, errands & life goals' },
 ];
 
-const demoAccounts = [
-  { role: 'Student', email: 'abebe.girma@planwise.et', password: 'StudyPlan@2026' },
-  { role: 'Professional', email: 'yonas.bekele@planwise.et', password: 'WorkFlow@2026' },
-];
-
 export default function AuthForm() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -63,43 +60,46 @@ export default function AuthForm() {
     },
   });
 
-  const handleDemoFill = (email: string, password: string) => {
-    loginForm.setValue('email', email);
-    loginForm.setValue('password', password);
-    toast.success('Demo credentials filled — click Sign In to continue.');
-  };
-
-  const onLogin = (data: LoginFormData) => {
+  const onLogin = async (data: LoginFormData) => {
     setLoginLoading(true);
-    // Backend integration: POST /api/auth/login with { email, password }
-    const isValid = demoAccounts.some(
-      (acc) => acc.email === data.email && acc.password === data.password
-    );
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to sign in.');
+      toast.success('Welcome back!');
+      router.replace('/');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to sign in.');
+    } finally {
       setLoginLoading(false);
-      if (isValid) {
-        toast.success('Welcome back! Redirecting to your dashboard…');
-        setTimeout(() => { window.location.href = '/'; }, 1000);
-      } else {
-        loginForm.setError('email', {
-          message: 'Invalid credentials — use the demo accounts below to sign in',
-        });
-      }
-    }, 1400);
+    }
   };
 
-  const onSignUp = (data: SignUpFormData) => {
+  const onSignUp = async (data: SignUpFormData) => {
     if (data.password !== data.confirmPassword) {
       signupForm.setError('confirmPassword', { message: 'Passwords do not match' });
       return;
     }
     setSignupLoading(true);
-    // Backend integration: POST /api/auth/register with full signup data
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to create your account.');
+      toast.success('Account created successfully. Welcome to Daily Planner!');
+      router.replace('/');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to create your account.');
+    } finally {
       setSignupLoading(false);
-      toast.success('Account created! Welcome to PlanWise AI.');
-      setTimeout(() => { window.location.href = '/'; }, 1000);
-    }, 1600);
+    }
   };
 
   return (
@@ -220,55 +220,6 @@ export default function AuthForm() {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">or continue with</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            {/* Social auth */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {[
-                { key: 'social-google', label: 'Google', icon: 'GlobeAltIcon' },
-                { key: 'social-github', label: 'GitHub', icon: 'CodeBracketIcon' },
-              ].map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  className="flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-all duration-150 active:scale-95"
-                >
-                  <Icon name={s.icon as Parameters<typeof Icon>[0]['name']} size={17} className="text-muted-foreground" />
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Demo credentials */}
-            <div className="rounded-2xl border border-info/30 bg-info-bg p-4">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Icon name="InformationCircleIcon" size={15} className="text-info" />
-                <span className="text-xs font-semibold text-info">Demo Accounts</span>
-              </div>
-              <div className="space-y-2">
-                {demoAccounts.map((acc) => (
-                  <div key={`demo-${acc.role}`} className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <span className="font-semibold text-foreground">{acc.role}:</span>{' '}
-                      <span className="text-muted-foreground truncate">{acc.email}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDemoFill(acc.email, acc.password)}
-                      className="flex items-center gap-1 bg-info/15 text-info rounded-lg px-2.5 py-1 text-xs font-semibold hover:bg-info/25 transition-all duration-150 flex-shrink-0"
-                    >
-                      <Icon name="ArrowRightCircleIcon" size={13} />
-                      Use
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -469,28 +420,6 @@ export default function AuthForm() {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">or sign up with</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: 'social-google-signup', label: 'Google', icon: 'GlobeAltIcon' },
-                { key: 'social-github-signup', label: 'GitHub', icon: 'CodeBracketIcon' },
-              ].map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  className="flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-all duration-150 active:scale-95"
-                >
-                  <Icon name={s.icon as Parameters<typeof Icon>[0]['name']} size={17} className="text-muted-foreground" />
-                  {s.label}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
