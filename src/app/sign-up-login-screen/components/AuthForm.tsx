@@ -107,7 +107,7 @@ export default function AuthForm() {
       {/* Mobile logo */}
       <div className="flex lg:hidden items-center gap-2 mb-8">
         <AppLogo size={32} />
-        <span className="font-extrabold text-lg text-foreground">PlanWise AI</span>
+        <span className="font-extrabold text-lg text-foreground">Daily Planner</span>
       </div>
 
       <div className="w-full max-w-md">
@@ -133,7 +133,7 @@ export default function AuthForm() {
           <div className="slide-up">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-foreground">Welcome back</h2>
-              <p className="text-sm text-muted-foreground mt-1">Sign in to your PlanWise AI account</p>
+              <p className="text-sm text-muted-foreground mt-1">Sign in to your Daily Planner account</p>
             </div>
 
             <form onSubmit={loginForm.handleSubmit(onLogin)} noValidate>
@@ -393,7 +393,7 @@ export default function AuthForm() {
                   })}
                 />
                 <label htmlFor="agree-terms" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
-                  I agree to PlanWise AI&apos;s{' '}
+                  I agree to Daily Planner&apos;s{' '}
                   <span className="text-primary font-medium hover:underline cursor-pointer">Terms of Service</span>
                   {' '}and{' '}
                   <span className="text-primary font-medium hover:underline cursor-pointer">Privacy Policy</span>
@@ -427,7 +427,7 @@ export default function AuthForm() {
         <p className="text-center text-sm text-muted-foreground mt-6">
           {tab === 'login' ? (
             <>
-              New to PlanWise AI?{' '}
+              New to Daily Planner?{' '}
               <button onClick={() => setTab('signup')} className="text-primary font-semibold hover:underline">
                 Create a free account
               </button>

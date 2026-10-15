@@ -3,16 +3,16 @@ import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 
 const features = [
-  { key: 'feat-ai', icon: 'SparklesIcon', title: 'AI-Generated Schedules', desc: 'Tell us your goals — we build a realistic daily plan in seconds.' },
-  { key: 'feat-reschedule', icon: 'ArrowPathIcon', title: 'Smart Rescheduling', desc: 'Missed a task? The AI finds the next best slot automatically.' },
-  { key: 'feat-risk', icon: 'ShieldCheckIcon', title: 'Deadline Risk Alerts', desc: 'Know before it\'s too late which goals need more attention.' },
-  { key: 'feat-track', icon: 'ChartBarIcon', title: 'Progress Tracking', desc: 'Visual reports show what you completed vs. what slipped.' },
+  { key: 'feat-ai', icon: 'SparklesIcon', title: 'Build your daily plan', desc: 'Add tasks, set priorities, and choose when you want to work on them.' },
+  { key: 'feat-reschedule', icon: 'ArrowPathIcon', title: 'Adjust it anytime', desc: 'Move tasks around whenever your plans change.' },
+  { key: 'feat-risk', icon: 'ShieldCheckIcon', title: 'Keep deadlines in view', desc: 'See what is coming up and decide what needs your attention.' },
+  { key: 'feat-track', icon: 'ChartBarIcon', title: 'Track your progress', desc: 'Keep track of the tasks you have completed.' },
 ];
 
 const testimonial = {
-  quote: 'PlanWise helped me prepare for 4 exams without pulling all-nighters. When I missed a session, it just fixed my plan.',
-  name: 'Tigist Haile',
-  role: 'Computer Science student, AAU',
+  quote: 'Plan your day, adjust it when life changes, and keep moving toward what matters.',
+  name: 'Daily planning',
+  role: 'A flexible plan for everyday life',
 };
 
 export default function BrandPanel() {
@@ -25,18 +25,18 @@ export default function BrandPanel() {
       {/* Logo */}
       <div className="relative flex items-center gap-3 mb-12">
         <AppLogo size={36} />
-        <span className="font-extrabold text-xl text-white tracking-tight">PlanWise AI</span>
+        <span className="font-extrabold text-xl text-white tracking-tight">Daily Planner</span>
       </div>
 
       {/* Hero copy */}
       <div className="relative flex-1">
         <h1 className="text-hero-xl font-extrabold text-white leading-tight mb-4">
-          Plan smarter.<br />
-          Adapt faster.<br />
-          <span className="text-white/60">Achieve more.</span>
+          Make a plan.<br />
+          Make it yours.<br />
+          <span className="text-white/60">Get things done.</span>
         </h1>
         <p className="text-white/70 text-base leading-relaxed max-w-sm mb-10">
-          PlanWise AI turns your goals into daily schedules and automatically recovers your plan when life gets in the way — no manual replanning needed.
+          Daily Planner helps you organize tasks, set priorities, and shape a schedule that works for you. Plan manually, make changes anytime, and track what you get done.
         </p>
 
         {/* Features */}
@@ -59,7 +59,7 @@ export default function BrandPanel() {
           <p className="text-sm text-white/85 italic leading-relaxed mb-3">&quot;{testimonial.quote}&quot;</p>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold">
-              TH
+              DP
             </div>
             <div>
               <p className="text-sm font-semibold text-white">{testimonial.name}</p>
@@ -72,9 +72,9 @@ export default function BrandPanel() {
       {/* Stats bar */}
       <div className="relative flex items-center gap-6 pt-6 border-t border-white/20 mt-6">
         {[
-          { key: 'stat-users', value: '12,400+', label: 'Active planners' },
-          { key: 'stat-tasks', value: '89%', label: 'Avg completion rate' },
-          { key: 'stat-reschedule', value: '3.2×', label: 'Fewer missed deadlines' },
+          { key: 'stat-users', value: 'Your plan', label: 'Built around your priorities' },
+          { key: 'stat-tasks', value: 'Your pace', label: 'Adjust it whenever you need' },
+          { key: 'stat-reschedule', value: 'Your progress', label: 'See what you have completed' },
         ].map((s) => (
           <div key={s.key}>
             <p className="text-xl font-bold text-white tabular-nums">{s.value}</p>

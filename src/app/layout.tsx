@@ -17,9 +17,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'PlanWise AI — Intelligent Life Planning & Smart Rescheduling',
+  title: 'Daily Planner — Plan Your Day Your Way',
   description:
-    'PlanWise AI turns your goals into realistic daily schedules and automatically reschedules tasks when life gets in the way — built for students and professionals.',
+    'Organize tasks, set priorities, and build a daily schedule that works for you. Plan manually, adjust your schedule anytime, and track your progress.',
   icons: {
     icon: [{ url: '/favicon.ico', type: 'image/x-icon' }],
   },
@@ -44,9 +44,7 @@ export default function RootLayout({
             },
           }}
         />
-
-        <script type="module" async src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fplanwise1936back.builtwithrocket.new&_be=https%3A%2F%2Fappanalytics.rocket.new&_v=0.1.21" />
-        <script type="module" defer src="https://static.rocket.new/rocket-shot.js?v=0.0.3" /></body>
+      </body>
     </html>
   );
 }
