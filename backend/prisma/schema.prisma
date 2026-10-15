@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum TaskStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+  RESCHEDULED
+  UPCOMING
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  planningMode String         @default("student")
+  calendarPref String         @default("gregorian")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  tasks        Task[]
+  goals        Goal[]
+  schedule     ScheduleBlock[]
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String       @db.VarChar(200)
+  description String?      @db.Text
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueAt       DateTime?
+  estimatedMinutes Int     @default(30)
+  scheduledDate String?    @db.VarChar(10)
+  scheduledTime String?    @db.VarChar(5)
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId      String?
+  goal        Goal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  dependencyId String?
+  dependency  Task?        @relation("TaskDependency", fields: [dependencyId], references: [id], onDelete: SetNull)
+  dependents  Task[]       @relation("TaskDependency")
+  scheduleBlocks ScheduleBlock[]
+
+  @@index([userId, status])
+  @@index([userId, dueAt])
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  title       String
+  category    String     @default("Personal") @db.VarChar(80)
+  description String?
+  targetDate  DateTime?
+  status      GoalStatus @default(ACTIVE)
+  progress    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([userId, status])
+}
+
+model ScheduleBlock {
+  id        String   @id @default(cuid())
+  title     String
+  startAt   DateTime
+  endAt     DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startAt, endAt])
+}
